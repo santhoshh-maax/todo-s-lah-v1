@@ -31,7 +31,7 @@ class _CalendarPageState extends State<CalendarPage> {
           return taskDate.weekday == day.weekday;
         }
       } catch (e) {
-        print("⚠️ Skipping task with invalid date: ${task['date']}");
+        // print("⚠️ Skipping task with invalid date: ${task['date']}");
       }
 
       return false;

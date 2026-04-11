@@ -33,7 +33,7 @@ class NotiService {
       },
     );
 
-    print("✅ Notifications Ready");
+    // print("✅ Notifications Ready");
   }
 
   /// 2. Request Exact Alarm Permission (Fixes the PlatformException)
@@ -45,9 +45,9 @@ class NotiService {
       if (androidImplementation != null) {
         final bool? granted = await androidImplementation.requestExactAlarmsPermission();
         if (granted == false) {
-          print("⚠️ Exact Alarm permission was denied by the user.");
+          // print("⚠️ Exact Alarm permission was denied by the user.");
         } else {
-          print("✅ Exact Alarm permission granted.");
+          // print("✅ Exact Alarm permission granted.");
         }
       }
     }
@@ -112,11 +112,11 @@ class NotiService {
 
     final now = tz.TZDateTime.now(location);
 
-    print("------------------------------------------");
-    print("🚀 [NotiService] Attempting to schedule...");
-    print("📌 ID: $id | Title: $title");
-    print("⏰ Task Time: $taskTime");
-    print("🔔 Notification Time: $notificationTime ($reminderMinutes mins early)");
+    // print("------------------------------------------");
+    // print("🚀 [NotiService] Attempting to schedule...");
+    // print("📌 ID: $id | Title: $title");
+    // print("⏰ Task Time: $taskTime");
+    // print("🔔 Notification Time: $notificationTime ($reminderMinutes mins early)");
 
     // Prevent scheduling in the past
     if (notificationTime.isBefore(now)) {
@@ -128,7 +128,7 @@ class NotiService {
         // If the time is within the last few minutes, show it almost immediately
         notificationTime = now.add(const Duration(seconds: 5));
       }
-      print("⚠️ [NotiService] Time was in past. Adjusted to: $notificationTime");
+      // print("⚠️ [NotiService] Time was in past. Adjusted to: $notificationTime");
     }
 
     try {
@@ -148,16 +148,16 @@ class NotiService {
                 ? DateTimeComponents.dayOfWeekAndTime
                 : null,
       );
-      print("✅ [NotiService] Scheduled Successfully.");
+      // print("✅ [NotiService] Scheduled Successfully.");
     } catch (e) {
-      print("❌ [NotiService] Failed to schedule: $e");
+      // print("❌ [NotiService] Failed to schedule: $e");
     }
-    print("------------------------------------------");
+    // print("------------------------------------------");
   }
 
   Future<void> cancelNotification(int id) async {
     await _plugin.cancel(id);
-    print("🗑️ [NotiService] Notification $id cancelled.");
+    // print("🗑️ [NotiService] Notification $id cancelled.");
   }
 }
 
