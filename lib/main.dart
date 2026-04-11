@@ -4,8 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart';
-import 'package:android_intent_plus/android_intent.dart';
-import 'package:android_intent_plus/flag.dart';
+// 1. You need this specific import for the platform override
+import 'package:flutter/foundation.dart';
+
 
 // Your local files
 import 'splash_screen.dart';
@@ -13,24 +14,25 @@ import 'noti_service.dart';
 import 'calendar_page.dart';
 import 'settings_page.dart';
 
-void main() async {
+void main() {
+  // 1. Standard Flutter initialization
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 1. Start the app immediately so the Splash Screen shows
+  // 2. Start UI immediately to prevent the OS from timing out the app
   runApp(const MyApp());
 
-  // 2. Initialize heavy services in the background
-  _initAsync();
+  // 3. Initialize notifications in the background WITHOUT battery requests
+  _initNotifications();
 }
 
-Future<void> _initAsync() async {
+Future<void> _initNotifications() async {
   try {
     final noti = NotiService();
+    // Use the fixed icon name (no .png extension)
     await noti.initNotification();
-    await noti.loadSavedTimeZone();
-    debugPrint("✅ Background Services Ready");
+    debugPrint("✅ Notifications Ready");
   } catch (e) {
-    debugPrint("❌ Background Init Error: $e");
+    debugPrint("❌ Notification Init Failed: $e");
   }
 }
 
@@ -124,22 +126,11 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         await Permission.notification.request();
       }
       // Only call if you have the android_intent package configured
-      _requestBatteryOptimizations();
+      
     }
   }
 
-  Future<void> _requestBatteryOptimizations() async {
-    try {
-      final intent = AndroidIntent(
-        action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-        data: 'package:com.example.notification', // Verify this matches your pubspec/build.gradle
-        flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-      );
-      await intent.launch();
-    } catch (e) {
-      debugPrint("Battery Optimization Intent failed: $e");
-    }
-  }
+  
 
   Future<void> saveTasks() async {
     final prefs = await SharedPreferences.getInstance();

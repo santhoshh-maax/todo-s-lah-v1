@@ -116,9 +116,10 @@ Future<void> _updateTheme(String theme) async {
                 const ListTile(
                   leading: Icon(Icons.info_outline),
                   title: Text("Version"),
-                  trailing: Text("2.0.0"),
+                  trailing: Text("1.0.0"),
                 ),
               ],
+              
             ),
           ),
 
