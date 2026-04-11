@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart'; // Added for debugPrint
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -17,10 +18,8 @@ class NotiService {
   /// 1. Initialize Notifications
   Future<void> initNotification() async {
     tz_data.initializeTimeZones();
-    await loadSavedTimeZone(); // Initialize timezone before scheduling
+    await loadSavedTimeZone();
 
-    // Note: If ic_launcher fails, ensure you have ic_launcher.png in 
-    // android/app/src/main/res/drawable/
     const androidInit = AndroidInitializationSettings('@mipmap/icon');
     const initSettings = InitializationSettings(android: androidInit);
 
@@ -32,23 +31,17 @@ class NotiService {
         }
       },
     );
-
-    // print("✅ Notifications Ready");
   }
 
-  /// 2. Request Exact Alarm Permission (Fixes the PlatformException)
+  /// 2. Request Exact Alarm Permission
   Future<void> checkExactAlarmPermission() async {
     if (Platform.isAndroid) {
       final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
 
       if (androidImplementation != null) {
-        final bool? granted = await androidImplementation.requestExactAlarmsPermission();
-        if (granted == false) {
-          // print("⚠️ Exact Alarm permission was denied by the user.");
-        } else {
-          // print("✅ Exact Alarm permission granted.");
-        }
+        // In production, we just request it; the OS handles the UI
+        await androidImplementation.requestExactAlarmsPermission();
       }
     }
   }
@@ -60,6 +53,7 @@ class NotiService {
       tz.setLocalLocation(tz.getLocation(_selectedTimeZone));
     } catch (e) {
       _selectedTimeZone = 'UTC';
+      debugPrint("Timezone Error: $e");
     }
   }
 
@@ -69,12 +63,14 @@ class NotiService {
   }) {
     return NotificationDetails(
       android: AndroidNotificationDetails(
-        'todo_channel',
+        'todo_channel_id_01', // Changed ID to ensure a fresh channel in release
         'Task Reminders',
+        channelDescription: 'Notifications for your scheduled tasks',
         importance: Importance.max,
         priority: Priority.high,
-        fullScreenIntent: true, // This helps the notification show up over the lockscreen
+        fullScreenIntent: true, 
         category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public, // Ensures it shows on lockscreen
         actions: withActions
             ? [
                 const AndroidNotificationAction(
@@ -101,34 +97,23 @@ class NotiService {
     String repeat = 'None',
     int reminderMinutes = 0,
   }) async {
-    // Crucial: check permission every time before scheduling to avoid crashes
     await checkExactAlarmPermission();
 
     final location = tz.getLocation(_selectedTimeZone);
-
-    // Calculate time
     var taskTime = tz.TZDateTime(location, year, month, day, hour, minute);
     var notificationTime = taskTime.subtract(Duration(minutes: reminderMinutes));
-
     final now = tz.TZDateTime.now(location);
 
-    // print("------------------------------------------");
-    // print("🚀 [NotiService] Attempting to schedule...");
-    // print("📌 ID: $id | Title: $title");
-    // print("⏰ Task Time: $taskTime");
-    // print("🔔 Notification Time: $notificationTime ($reminderMinutes mins early)");
-
-    // Prevent scheduling in the past
+    // Logic to handle past times
     if (notificationTime.isBefore(now)) {
       if (repeat == 'Daily') {
         notificationTime = notificationTime.add(const Duration(days: 1));
       } else if (repeat == 'Weekly') {
         notificationTime = notificationTime.add(const Duration(days: 7));
       } else {
-        // If the time is within the last few minutes, show it almost immediately
+        // Show in 5 seconds if the user picked a time that just passed
         notificationTime = now.add(const Duration(seconds: 5));
       }
-      // print("⚠️ [NotiService] Time was in past. Adjusted to: $notificationTime");
     }
 
     try {
@@ -138,7 +123,7 @@ class NotiService {
         body,
         notificationTime,
         _notificationDetails(withActions: true),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle, // Keeps it working in battery saver
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: id.toString(),
@@ -148,26 +133,21 @@ class NotiService {
                 ? DateTimeComponents.dayOfWeekAndTime
                 : null,
       );
-      // print("✅ [NotiService] Scheduled Successfully.");
     } catch (e) {
-      // print("❌ [NotiService] Failed to schedule: $e");
+      debugPrint("Schedule Failure: $e");
     }
-    // print("------------------------------------------");
   }
 
   Future<void> cancelNotification(int id) async {
     await _plugin.cancel(id);
-    // print("🗑️ [NotiService] Notification $id cancelled.");
   }
 }
 
-
-
+/// Request Battery Optimization Exemption
 Future<void> requestBatteryOptimizations() async {
   if (Platform.isAndroid) {
     var status = await Permission.ignoreBatteryOptimizations.status;
     if (status.isDenied) {
-      // This opens the system dialog for the user to select "Allow"
       await Permission.ignoreBatteryOptimizations.request();
     }
   }
