@@ -1,0 +1,187 @@
+import 'package:flutter/material.dart';
+import 'noti_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotiService().initNotification(); // Initialize notifications
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final TextEditingController _taskController = TextEditingController();
+  TimeOfDay? _selectedTime;
+  DateTime? _selectedDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Task Scheduler"),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _taskController,
+              decoration: const InputDecoration(
+                labelText: "Enter Task",
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                // Pick date
+                _selectedDate = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime(2100),
+                );
+
+                // Pick time
+                _selectedTime = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.now(),
+                );
+
+                if (_selectedDate != null && _selectedTime != null) {
+                  // Schedule notification
+                  final task = _taskController.text;
+                  NotiService().scheduleNotification(
+                    id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+                    title: "Task Reminder",
+                    body: "Reminder: $task at ${_selectedTime!.hour}:${_selectedTime!.minute}",
+                    year: _selectedDate!.year,
+                    month: _selectedDate!.month,
+                    day: _selectedDate!.day,
+                    hour: _selectedTime!.hour,
+                    minute: _selectedTime!.minute,
+                  );
+                  _taskController.clear();
+                }
+              },
+              child: const Text("Schedule Task"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz; // Ensure this import is present
+
+class NotiService {
+  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  bool _isInitialized = false;
+
+  Future<void> initNotification() async {
+    if (_isInitialized) return;
+
+    // Initialize timezone data
+    tz.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Kolkata')); // Set to your timezone
+
+    // Android initialization settings
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher'); // Ensure this icon exists
+    const iosInit = DarwinInitializationSettings();
+
+    const initSettings = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
+
+    // Initialize the notifications plugin
+    await _notificationsPlugin.initialize(initSettings);
+    _isInitialized = true;
+  }
+
+  NotificationDetails _notificationDetails() {
+    return const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'todo_channel', // Unique channel ID
+        'Todo Notifications',
+        channelDescription: 'Reminder notifications for tasks',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(),
+    );
+  }
+
+  Future<void> showNotification({
+    required String title,
+    required String body,
+  }) async {
+    await _notificationsPlugin.show(
+      0, // Notification ID
+      title,
+      body,
+      _notificationDetails(),
+    );
+  }
+
+  Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int year,
+    required int month,
+    required int day,
+    required int hour,
+    required int minute,
+  }) async {
+    final scheduledDate = tz.TZDateTime(tz.local, year, month, day, hour, minute);
+
+    print("Scheduled Date: $scheduledDate");
+    print("Current Date: ${tz.TZDateTime.now(tz.local)}");
+
+    // Check if the scheduled date is in the past
+    if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
+      print("Scheduled date is in the past. Notification will not be scheduled.");
+      return;
+    }
+
+    // Schedule the notification
+    await _notificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduledDate,
+      _notificationDetails(),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.dateAndTime,
+    );
+
+    print("Notification scheduled successfully.");
+  }
+
+  void cancelNotification(int id) {
+    _notificationsPlugin.cancel(id);
+  }
+}
