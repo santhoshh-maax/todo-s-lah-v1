@@ -19,6 +19,7 @@ dependencies:
   table_calendar: ^3.0.9
   url_launcher: ^6.2.0
   android_intent_plus: ^6.0.0
+  audioplayers: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -29,7 +30,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets\images\logo.png
+    - assets/images/logo.png
+    - assets/raw/
 flutter_launcher_icons:
   android: true
   ios: false
