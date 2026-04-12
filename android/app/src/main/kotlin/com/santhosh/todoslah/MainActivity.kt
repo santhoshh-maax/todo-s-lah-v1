@@ -1,4 +1,4 @@
-package com.example.notification
+package com.santhosh.todoslah
 
 import io.flutter.embedding.android.FlutterActivity
 
