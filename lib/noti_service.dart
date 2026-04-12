@@ -85,7 +85,7 @@ class NotiService {
   }
 
   /// 5. Schedule Logic
-  Future<void> scheduleNotification({
+  Future<String?> scheduleNotification({
     required int id,
     required String title,
     required String body,
@@ -104,15 +104,30 @@ class NotiService {
     var notificationTime = taskTime.subtract(Duration(minutes: reminderMinutes));
     final now = tz.TZDateTime.now(location);
 
-    // Logic to handle past times
+    String? feedbackMessage;
+
+    // 1. Check if the scheduled notification time is in the past
     if (notificationTime.isBefore(now)) {
-      if (repeat == 'Daily') {
+      
+      // CASE A: The task is still in the future, but the reminder window passed
+      if (taskTime.isAfter(now)) {
+        notificationTime = taskTime; // Move notification to the exact task time
+        feedbackMessage = "Reminder window passed. Alert set for the exact task time ($hour:${minute.toString().padLeft(2, '0')}).";
+      } 
+      
+      // CASE B: Handling Repeats (Daily/Weekly)
+      else if (repeat == 'Daily') {
         notificationTime = notificationTime.add(const Duration(days: 1));
+        feedbackMessage = "Time passed. Reminder set for tomorrow.";
       } else if (repeat == 'Weekly') {
         notificationTime = notificationTime.add(const Duration(days: 7));
-      } else {
-        // Show in 5 seconds if the user picked a time that just passed
+        feedbackMessage = "Time passed. Reminder set for next week.";
+      } 
+      
+      // CASE C: Everything (Task & Reminder) is in the past
+      else {
         notificationTime = now.add(const Duration(seconds: 5));
+        feedbackMessage = "This time has already passed. Notifying you now.";
       }
     }
 
@@ -123,7 +138,7 @@ class NotiService {
         body,
         notificationTime,
         _notificationDetails(withActions: true),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle, // Keeps it working in battery saver
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: id.toString(),
@@ -133,8 +148,10 @@ class NotiService {
                 ? DateTimeComponents.dayOfWeekAndTime
                 : null,
       );
+      return feedbackMessage;
     } catch (e) {
       debugPrint("Schedule Failure: $e");
+      return "Error: Could not schedule reminder.";
     }
   }
 

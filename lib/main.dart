@@ -153,57 +153,71 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     });
   }
 
-  Future<void> pickDateTimeAndAddTask() async {
-    final input = textEditingController.text.trim();
-    if (input.isEmpty) return;
-
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+ Future<void> pickDateTimeAndAddTask() async {
+  if (textEditingController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please enter a task first lah!")),
     );
-    if (pickedDate == null) return;
+    return;
+  }
 
-    final pickedTime = await showTimePicker(
+  DateTime? pickedDate = await showDatePicker(
+    context: context,
+    initialDate: DateTime.now(),
+    firstDate: DateTime.now(),
+    lastDate: DateTime(2100),
+  );
+
+  if (pickedDate != null) {
+    TimeOfDay? pickedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
-    if (pickedTime == null) return;
 
-    _createTask(input, pickedDate, pickedTime);
+    if (pickedTime != null) {
+      // --- 1. FORMATTING THE TASK STRING ---
+      final dateString = DateFormat('dd/MM/yyyy').format(pickedDate);
+      final dt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+      final formattedTime = DateFormat('hh:mm a').format(dt);
+      
+      // Matches your _createTask format: Title | Date | Time | Repeat
+      final finalTaskString = "${textEditingController.text}\n$dateString\n$formattedTime\n$repeatValue";
+
+      // --- 2. SCHEDULING ---
+      final resultMessage = await NotiService().scheduleNotification(
+        id: todoList.length, 
+        title: "Task Reminder",
+        body: "📝 ${textEditingController.text}",
+        year: pickedDate.year,
+        month: pickedDate.month,
+        day: pickedDate.day,
+        hour: pickedTime.hour,
+        minute: pickedTime.minute,
+        repeat: repeatValue,
+        reminderMinutes: reminderValue,
+      );
+
+      // --- 3. UPDATING UI ---
+      setState(() {
+        todoList.add(finalTaskString);
+        taskCompleted.add(false);
+        textEditingController.clear();
+      });
+      saveTasks();
+
+      // --- 4. SNACKBAR WITH COLOR LOGIC ---
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(resultMessage ?? "Task scheduled successfully!"),
+            backgroundColor: resultMessage != null ? Colors.orangeAccent : Colors.blue,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
-
-  void _createTask(String input, DateTime pickedDate, TimeOfDay pickedTime) {
-    final dateString = DateFormat('dd/MM/yyyy').format(pickedDate);
-    final dt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
-    final formattedTime = DateFormat('hh:mm a').format(dt);
-    
-    // Format: Title | Date | Time | Repeat
-    final finalTask = "$input\n$dateString\n$formattedTime\n$repeatValue";
-
-    setState(() {
-      todoList.add(finalTask);
-      taskCompleted.add(false);
-    });
-
-    saveTasks(); 
-
-    NotiService().scheduleNotification(
-  id: todoList.length - 1,
-  title: "Task Reminder",
-  body: "📝 $input",
-  year: pickedDate.year,
-  month: pickedDate.month,
-  day: pickedDate.day,
-  hour: pickedTime.hour,
-  minute: pickedTime.minute,
-  repeat: repeatValue,
-  reminderMinutes: reminderValue, // 🔥 Pass the new value here
-);
-
-    textEditingController.clear();
-  }
+}
 
   @override
   Widget build(BuildContext context) {
