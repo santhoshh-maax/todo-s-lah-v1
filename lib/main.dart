@@ -4,9 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart';
-// 1. You need this specific import for the platform override
-
-
 
 // Your local files
 import 'splash_screen.dart';
@@ -15,20 +12,14 @@ import 'calendar_page.dart';
 import 'settings_page.dart';
 
 void main() {
-  // 1. Standard Flutter initialization
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 2. Start UI immediately to prevent the OS from timing out the app
   runApp(const MyApp());
-
-  // 3. Initialize notifications in the background WITHOUT battery requests
   _initNotifications();
 }
 
 Future<void> _initNotifications() async {
   try {
     final noti = NotiService();
-    // Use the fixed icon name (no .png extension)
     await noti.initNotification();
     debugPrint("✅ Notifications Ready");
   } catch (e) {
@@ -38,7 +29,6 @@ Future<void> _initNotifications() async {
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
-
   @override
   State<MyApp> createState() => _MyAppState();
 }
@@ -91,25 +81,38 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   List<bool> taskCompleted = [];
   TextEditingController textEditingController = TextEditingController();
   String repeatValue = 'None';
-  int reminderValue = 0; // Default to "At time"
+  int reminderValue = 0; 
+  String selectedAlarm = 'alarm1';
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addObserver(this); // Observe app lifecycle
     askNotificationPermission();
     loadTasks();
+    _loadSettings();
 
+    // Foreground listener
     NotiService().onMarkTaskCompleted = (int taskId) {
       if (mounted) {
-        setState(() {
-          if (taskId >= 0 && taskId < taskCompleted.length) {
-            taskCompleted[taskId] = true; 
-            saveTasks();
-          }
-        });
+        loadTasks(); // Refresh from disk when foreground action happens
       }
     };
+  }
+
+  // --- NEW: Refresh tasks when you reopen the app ---
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      loadTasks(); // Reload from SharedPreferences when app is resumed
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      selectedAlarm = prefs.getString('user_alarm') ?? 'alarm1';
+    });
   }
 
   @override
@@ -125,99 +128,104 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
       if (androidInfo.version.sdkInt >= 33) {
         await Permission.notification.request();
       }
-      // Only call if you have the android_intent package configured
-      
     }
   }
 
-  
-
+  // --- FIX: Use consistent keys ---
   Future<void> saveTasks() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('todoList', todoList);
-    await prefs.setStringList('taskCompleted', taskCompleted.map((e) => e.toString()).toList());
-  }
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setStringList('todoList', todoList);
+  // Ensure this key is 'taskCompleted' (no extra 's')
+  await prefs.setStringList('taskCompleted', taskCompleted.map((e) => e.toString()).toList());
+}
 
   Future<void> loadTasks() async {
-    final prefs = await SharedPreferences.getInstance();
-    final loadedList = prefs.getStringList('todoList') ?? [];
-    final loadedCompleted = prefs.getStringList('taskCompleted') ?? [];
+  final prefs = await SharedPreferences.getInstance();
+  
+  // Reloading directly from disk
+  final List<String> loadedList = prefs.getStringList('todoList') ?? [];
+  final List<String> loadedCompleted = prefs.getStringList('taskCompleted') ?? [];
 
-    setState(() {
-      todoList = loadedList;
-      taskCompleted = loadedCompleted.map((e) => e == 'true').toList();
-      // Adjust lengths if mismatched
-      while (taskCompleted.length < todoList.length) {
-        taskCompleted.add(false);
-      }
-    });
-  }
+  setState(() {
+    todoList = loadedList;
+    // Ensure we are parsing the fresh 'true'/'false' strings from the background
+    taskCompleted = loadedCompleted.map((e) => e == 'true').toList();
+    
+    // Safety check: match lengths
+    while (taskCompleted.length < todoList.length) {
+      taskCompleted.add(false);
+    }
+  });
+}
 
- Future<void> pickDateTimeAndAddTask() async {
-  if (textEditingController.text.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Please enter a task first lah!")),
-    );
-    return;
-  }
+  Future<void> pickDateTimeAndAddTask() async {
+    if (textEditingController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a task first lah!")),
+      );
+      return;
+    }
 
-  DateTime? pickedDate = await showDatePicker(
-    context: context,
-    initialDate: DateTime.now(),
-    firstDate: DateTime.now(),
-    lastDate: DateTime(2100),
-  );
-
-  if (pickedDate != null) {
-    TimeOfDay? pickedTime = await showTimePicker(
+    DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
     );
 
-    if (pickedTime != null) {
-      // --- 1. FORMATTING THE TASK STRING ---
-      final dateString = DateFormat('dd/MM/yyyy').format(pickedDate);
-      final dt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
-      final formattedTime = DateFormat('hh:mm a').format(dt);
-      
-      // Matches your _createTask format: Title | Date | Time | Repeat
-      final finalTaskString = "${textEditingController.text}\n$dateString\n$formattedTime\n$repeatValue";
-
-      // --- 2. SCHEDULING ---
-      final resultMessage = await NotiService().scheduleNotification(
-        id: todoList.length, 
-        title: "Task Reminder",
-        body: "📝 ${textEditingController.text}",
-        year: pickedDate.year,
-        month: pickedDate.month,
-        day: pickedDate.day,
-        hour: pickedTime.hour,
-        minute: pickedTime.minute,
-        repeat: repeatValue,
-        reminderMinutes: reminderValue,
+    if (pickedDate != null) {
+      TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
       );
 
-      // --- 3. UPDATING UI ---
-      setState(() {
-        todoList.add(finalTaskString);
-        taskCompleted.add(false);
-        textEditingController.clear();
-      });
-      saveTasks();
+      if (pickedTime != null) {
+        final dateString = DateFormat('dd/MM/yyyy').format(pickedDate);
+        final dt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+        final formattedTime = DateFormat('hh:mm a').format(dt);
+        
+        final finalTaskString = "${textEditingController.text}\n$dateString\n$formattedTime\n$repeatValue";
 
-      // --- 4. SNACKBAR WITH COLOR LOGIC ---
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(resultMessage ?? "Task scheduled successfully!"),
-            backgroundColor: resultMessage != null ? Colors.orangeAccent : Colors.blue,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        // 1. Generate a unique ID for the notification itself (e.g., 1712912400)
+// We use remainder to keep it within Android's integer limits
+final int uniqueNotificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+
+// 2. Schedule the notification
+final resultMessage = await NotiService().scheduleNotification(
+  id: uniqueNotificationId,
+  payload: todoList.length.toString(), // The index must be passed here
+  title: "Todo's lah Task",
+  body: textEditingController.text,
+  year: pickedDate.year,
+  month: pickedDate.month,
+  day: pickedDate.day,
+  hour: pickedTime.hour,
+  minute: pickedTime.minute,
+  repeat: repeatValue,
+  reminderMinutes: reminderValue,
+  soundName: selectedAlarm,
+);
+
+// 3. Update the UI and save to disk
+setState(() {
+  todoList.add(finalTaskString);
+  taskCompleted.add(false);
+  textEditingController.clear();
+});
+saveTasks(); // Always save after adding
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(resultMessage ?? "Task scheduled successfully!"),
+              backgroundColor: resultMessage != null ? Colors.orangeAccent : Colors.blue,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -227,8 +235,19 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(
-              builder: (context) => SettingsPage(onThemeChanged: widget.onThemeChanged))),
+            onPressed: () => Navigator.push(
+              context, 
+              MaterialPageRoute(
+                builder: (context) => SettingsPage(
+                  onThemeChanged: widget.onThemeChanged,
+                  onAlarmChanged: (newAlarm) {
+                    setState(() {
+                      selectedAlarm = newAlarm;
+                    });
+                  },
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -247,63 +266,41 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   }
 
   Widget _buildTaskInputCard() {
-  return Card(
-    elevation: 4,
-    shadowColor: Colors.black26,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Text input field
-          TextField(
-            controller: textEditingController,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              hintText: 'What needs to be done?',
-              hintStyle: TextStyle(color: Colors.grey.shade400),
-              border: InputBorder.none,
-              prefixIcon: const Icon(Icons.edit_note_rounded, color: Colors.blue),
-            ),
-          ),
-          const Divider(height: 20, thickness: 1),
-          
-          // Selection Controls Row
-          Row(
-            children: [
-              // Repeat Selection
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(" Repeat", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: repeatValue,
-                        items: ['None', 'Daily', 'Weekly']
-                            .map((val) => DropdownMenuItem(value: val, child: Text(val, style: const TextStyle(fontSize: 14))))
-                            .toList(),
-                        onChanged: (v) => setState(() => repeatValue = v!),
-                      ),
-                    ),
-                  ],
-                ),
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: textEditingController,
+              decoration: InputDecoration(
+                hintText: 'What needs to be done?',
+                border: InputBorder.none,
+                prefixIcon: const Icon(Icons.edit_note_rounded, color: Colors.blue),
               ),
-              const SizedBox(width: 15),
-              
-              // Reminder Selection
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(" Reminder", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        isExpanded: true,
-                        value: reminderValue,
-                        items: const [
+            ),
+            const Divider(),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: repeatValue,
+                    items: ['None', 'Daily', 'Weekly']
+                        .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                        .toList(),
+                    onChanged: (v) => setState(() => repeatValue = v!),
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: DropdownButton<int>(
+                    isExpanded: true,
+                    value: reminderValue,
+                    items: const [
                           DropdownMenuItem(value: 0, child: Text("At time", style: TextStyle(fontSize: 14))),
                           DropdownMenuItem(value: 10, child: Text("10m before", style: TextStyle(fontSize: 14))),
                           DropdownMenuItem(value: 15, child: Text("15m before", style: TextStyle(fontSize: 14))),
@@ -311,18 +308,12 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
                           DropdownMenuItem(value: 60, child: Text("1h before", style: TextStyle(fontSize: 14))),
                           DropdownMenuItem(value: 1440, child: Text("1d before", style: TextStyle(fontSize: 14))),
                         ],
-                        onChanged: (v) => setState(() => reminderValue = v!),
-                      ),
-                    ),
-                  ],
+                    onChanged: (v) => setState(() => reminderValue = v!),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 15),
-          
-          // Action Button
+              ],
+            ),
+            const SizedBox(height: 15),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -331,17 +322,24 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
               ),
               icon: const Icon(Icons.add_task_rounded),
-              label: const Text("Set Schedule & Add", style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text(
+                "Set Schedule & Add", 
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
+
   Widget _buildTaskListHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
