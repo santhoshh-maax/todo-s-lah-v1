@@ -115,27 +115,35 @@ class _SettingsPageState extends State<SettingsPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  const Text("Select Alarm Tone",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Select Alarm Tone",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 10),
                   Expanded(
                     child: ListView.builder(
                       physics: const BouncingScrollPhysics(),
-                      itemCount: 13,
+                      itemCount: 20,
                       itemBuilder: (context, index) {
                         String toneValue = 'alarm${index + 1}';
                         bool isSelected = selectedAlarm == toneValue;
 
                         return ListTile(
                           leading: Icon(
-                            isSelected ? Icons.play_circle_fill : Icons.play_circle_outline,
+                            isSelected
+                                ? Icons.play_circle_fill
+                                : Icons.play_circle_outline,
                             color: isSelected ? Colors.blue : Colors.grey,
                           ),
-                          title: Text("Tone ${index + 1}",
-                              style: TextStyle(
-                                color: isSelected ? Colors.blue : null,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              )),
+                          title: Text(
+                            "Tone ${index + 1}",
+                            style: TextStyle(
+                              color: isSelected ? Colors.blue : null,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
                           trailing: isSelected
                               ? const Icon(Icons.check, color: Colors.blue)
                               : null,
@@ -187,11 +195,19 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 _buildSectionHeader("Appearance"),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceVariant.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(color: Colors.blue.withOpacity(0.2)),
                     ),
@@ -199,7 +215,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       child: DropdownButton<String>(
                         value: _selectedTheme,
                         isExpanded: true,
-                        icon: const Icon(Icons.palette_rounded, color: Colors.blue),
+                        icon: const Icon(
+                          Icons.palette_rounded,
+                          color: Colors.blue,
+                        ),
                         items: ['Light', 'Dark', 'System'].map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
@@ -209,13 +228,18 @@ class _SettingsPageState extends State<SettingsPage> {
                                   value == 'Light'
                                       ? Icons.wb_sunny_outlined
                                       : value == 'Dark'
-                                          ? Icons.nightlight_round
-                                          : Icons.settings_suggest,
+                                      ? Icons.nightlight_round
+                                      : Icons.settings_suggest,
                                   size: 18,
                                   color: Colors.grey,
                                 ),
                                 const SizedBox(width: 12),
-                                Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                Text(
+                                  value,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ],
                             ),
                           );
@@ -230,10 +254,18 @@ class _SettingsPageState extends State<SettingsPage> {
                 const Divider(),
                 _buildSectionHeader("Notifications"),
                 ListTile(
-                  leading: const Icon(Icons.music_note_rounded, color: Colors.blue),
+                  leading: const Icon(
+                    Icons.music_note_rounded,
+                    color: Colors.blue,
+                  ),
                   title: const Text("Alarm Tone"),
-                  subtitle: Text("Current: ${selectedAlarm.replaceAll('alarm', 'Tone ')}"),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                  subtitle: Text(
+                    "Current: ${selectedAlarm.replaceAll('alarm', 'Tone ')}",
+                  ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                  ),
                   onTap: () => _showTonePicker(context),
                 ),
                 const Divider(),

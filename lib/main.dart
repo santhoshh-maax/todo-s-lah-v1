@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -11,16 +12,22 @@ import 'noti_service.dart';
 import 'calendar_page.dart';
 import 'settings_page.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SharedPreferences.getInstance();
+  
+  DartPluginRegistrant.ensureInitialized();
+  // Initialize notifications before the app starts to catch payloads
+  await _initNotifications(); 
+  
   runApp(const MyApp());
-  _initNotifications();
 }
 
 Future<void> _initNotifications() async {
   try {
     final noti = NotiService();
     await noti.initNotification();
+
     debugPrint("✅ Notifications Ready");
   } catch (e) {
     debugPrint("❌ Notification Init Failed: $e");
@@ -46,9 +53,13 @@ class _MyAppState extends State<MyApp> {
     final prefs = await SharedPreferences.getInstance();
     final String? savedTheme = prefs.getString('themeMode');
     setState(() {
-      if (savedTheme == 'Light') _themeMode = ThemeMode.light;
-      else if (savedTheme == 'Dark') _themeMode = ThemeMode.dark;
-      else _themeMode = ThemeMode.system;
+      if (savedTheme == 'Light') {
+        _themeMode = ThemeMode.light;
+      } else if (savedTheme == 'Dark') {
+        _themeMode = ThemeMode.dark;
+      } else {
+        _themeMode = ThemeMode.system;
+      }
     });
   }
 
@@ -87,32 +98,28 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // Observe app lifecycle
-    askNotificationPermission();
-    loadTasks();
-    _loadSettings();
+    WidgetsBinding.instance.addObserver(this); 
 
-    // Foreground listener
+ WidgetsBinding.instance.addPostFrameCallback((_) {
+  _handleNotificationLaunch();
+});
+    
+    // 1. Initial Load with the new helper
+    _initialLoad(); 
+
+    askNotificationPermission();
+    Future.delayed(const Duration(seconds: 3), () {
+      NotiService().requestBatteryOptimizations();
+    });
+
     NotiService().onMarkTaskCompleted = (int taskId) {
-      if (mounted) {
-        loadTasks(); // Refresh from disk when foreground action happens
-      }
+      if (mounted) syncAppWithDisk();
     };
   }
 
-  // --- NEW: Refresh tasks when you reopen the app ---
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      loadTasks(); // Reload from SharedPreferences when app is resumed
-    }
-  }
-
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      selectedAlarm = prefs.getString('user_alarm') ?? 'alarm1';
-    });
+  Future<void> _initialLoad() async {
+    await syncAppWithDisk();
+    if (mounted) setState(() {}); 
   }
 
   @override
@@ -121,6 +128,51 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     textEditingController.dispose();
     super.dispose();
   }
+
+  @override
+void didChangeAppLifecycleState(AppLifecycleState state) {
+  if (state == AppLifecycleState.resumed) {
+    debugPrint("🔄 App Resumed: Syncing with disk...");
+    Future.delayed(const Duration(milliseconds: 500), () {
+      syncAppWithDisk();
+    });
+  }
+}
+
+
+Future<void> syncAppWithDisk() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.reload(); 
+  
+  List<String> storedTodo = prefs.getStringList('todoList') ?? [];
+  // Use a temporary list to avoid mid-loop UI flickers
+  List<bool> syncedStatus = [];
+
+  for (int i = 0; i < storedTodo.length; i++) {
+    final parts = storedTodo[i].split('\n');
+    // Ensure we are grabbing the ID correctly (usually the last part)
+    final String taskId = parts.last.trim();
+    
+    // 1. Check the Atomic Boolean (from background)
+    bool isDoneAtomic = prefs.getBool('status_$taskId') ?? false;
+      debugPrint("📥 Checking status_$taskId = $isDoneAtomic");
+    // 2. Check the legacy String List (from manual ticks)
+    List<String> storedStatusList = prefs.getStringList('taskCompleted') ?? [];
+    bool isDoneInList = (i < storedStatusList.length && storedStatusList[i] == 'true');
+
+    // If either is true, the task is DONE
+    syncedStatus.add(isDoneAtomic || isDoneInList);
+  }
+
+  if (mounted) {
+    setState(() {
+      todoList = storedTodo;
+      taskCompleted = syncedStatus;
+    });
+  }
+  debugPrint("✅ UI SYNC: ${todoList.length} tasks | ${taskCompleted.where((e) => e).length} ticks.");
+  
+}
 
   Future<void> askNotificationPermission() async {
     if (Platform.isAndroid) {
@@ -131,31 +183,50 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     }
   }
 
-  // --- FIX: Use consistent keys ---
   Future<void> saveTasks() async {
   final prefs = await SharedPreferences.getInstance();
+  // Ensure these are awaited!
   await prefs.setStringList('todoList', todoList);
-  // Ensure this key is 'taskCompleted' (no extra 's')
   await prefs.setStringList('taskCompleted', taskCompleted.map((e) => e.toString()).toList());
+  debugPrint("📦 Current Tasks: $todoList");
+  debugPrint("💾 Data saved to disk.");
 }
 
-  Future<void> loadTasks() async {
-  final prefs = await SharedPreferences.getInstance();
-  
-  // Reloading directly from disk
-  final List<String> loadedList = prefs.getStringList('todoList') ?? [];
-  final List<String> loadedCompleted = prefs.getStringList('taskCompleted') ?? [];
+Future<void> _handleNotificationLaunch() async {
+  debugPrint("🚀 HANDLE FUNCTION CALLED");
+  final noti = NotiService();
+  final details = await noti.getLaunchDetails();
 
-  setState(() {
-    todoList = loadedList;
-    // Ensure we are parsing the fresh 'true'/'false' strings from the background
-    taskCompleted = loadedCompleted.map((e) => e == 'true').toList();
-    
-    // Safety check: match lengths
-    while (taskCompleted.length < todoList.length) {
-      taskCompleted.add(false);
+  if (details?.didNotificationLaunchApp ?? false) {
+    final payload = details!.notificationResponse?.payload;
+
+    if (payload != null) {
+      debugPrint("🔥 FIX: Saving from MainApp: $payload");
+
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.setBool('status_$payload', true);
+
+      List<String> todoList = prefs.getStringList('todoList') ?? [];
+      List<String> completedList = prefs.getStringList('taskCompleted') ?? [];
+
+      for (int i = 0; i < todoList.length; i++) {
+        final parts = todoList[i].split('\n');
+        final String storedId = parts.last.trim();
+
+        if (storedId == payload) {
+          while (completedList.length <= i) completedList.add('false');
+          completedList[i] = 'true';
+          break;
+        }
+      }
+
+      await prefs.setStringList('taskCompleted', completedList);
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      await syncAppWithDisk(); // ✅ FORCE UI UPDATE
     }
-  });
+  }
 }
 
   Future<void> pickDateTimeAndAddTask() async {
@@ -173,51 +244,50 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
       lastDate: DateTime(2100),
     );
 
-    if (pickedDate != null) {
+    if (pickedDate != null && mounted) {
       TimeOfDay? pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.now(),
       );
 
-      if (pickedTime != null) {
+      if (pickedTime != null && mounted) {
         final dateString = DateFormat('dd/MM/yyyy').format(pickedDate);
-        final dt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+        final dt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, 
+                            pickedTime.hour, pickedTime.minute);
         final formattedTime = DateFormat('hh:mm a').format(dt);
         
-        final finalTaskString = "${textEditingController.text}\n$dateString\n$formattedTime\n$repeatValue";
+        final int uniqueId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+        debugPrint("🆔 Generated Task ID: $uniqueId");
+        debugPrint("🆔 New Task Created → ID: $uniqueId | Title: ${textEditingController.text}");
 
-        // 1. Generate a unique ID for the notification itself (e.g., 1712912400)
-// We use remainder to keep it within Android's integer limits
-final int uniqueNotificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+        final resultMessage = await NotiService().scheduleNotification(
+          id: uniqueId,
+          payload: uniqueId.toString(),
+          title: "Todo's lah Task",
+          body: textEditingController.text,
+          year: pickedDate.year,
+          month: pickedDate.month,
+          day: pickedDate.day,
+          hour: pickedTime.hour,
+          minute: pickedTime.minute,
+          repeat: repeatValue,
+          reminderMinutes: reminderValue,
+          soundName: selectedAlarm,
+        );
 
-// 2. Schedule the notification
-final resultMessage = await NotiService().scheduleNotification(
-  id: uniqueNotificationId,
-  payload: todoList.length.toString(), // The index must be passed here
-  title: "Todo's lah Task",
-  body: textEditingController.text,
-  year: pickedDate.year,
-  month: pickedDate.month,
-  day: pickedDate.day,
-  hour: pickedTime.hour,
-  minute: pickedTime.minute,
-  repeat: repeatValue,
-  reminderMinutes: reminderValue,
-  soundName: selectedAlarm,
-);
+        final finalTaskString = "${textEditingController.text}\n$dateString\n$formattedTime\n$repeatValue\n$uniqueId";
 
-// 3. Update the UI and save to disk
-setState(() {
-  todoList.add(finalTaskString);
-  taskCompleted.add(false);
-  textEditingController.clear();
-});
-saveTasks(); // Always save after adding
+        setState(() {
+          todoList.add(finalTaskString);
+          taskCompleted.add(false);
+          textEditingController.clear();
+        });
+        saveTasks();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(resultMessage ?? "Task scheduled successfully!"),
+              content: Text(resultMessage ?? "Task scheduled!"),
               backgroundColor: resultMessage != null ? Colors.orangeAccent : Colors.blue,
               behavior: SnackBarBehavior.floating,
             ),
@@ -241,9 +311,7 @@ saveTasks(); // Always save after adding
                 builder: (context) => SettingsPage(
                   onThemeChanged: widget.onThemeChanged,
                   onAlarmChanged: (newAlarm) {
-                    setState(() {
-                      selectedAlarm = newAlarm;
-                    });
+                    setState(() => selectedAlarm = newAlarm);
                   },
                 ),
               ),
@@ -276,10 +344,10 @@ saveTasks(); // Always save after adding
           children: [
             TextField(
               controller: textEditingController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'What needs to be done?',
                 border: InputBorder.none,
-                prefixIcon: const Icon(Icons.edit_note_rounded, color: Colors.blue),
+                prefixIcon: Icon(Icons.edit_note_rounded, color: Colors.blue),
               ),
             ),
             const Divider(),
@@ -301,39 +369,34 @@ saveTasks(); // Always save after adding
                     isExpanded: true,
                     value: reminderValue,
                     items: const [
-                          DropdownMenuItem(value: 0, child: Text("At time", style: TextStyle(fontSize: 14))),
-                          DropdownMenuItem(value: 10, child: Text("10m before", style: TextStyle(fontSize: 14))),
-                          DropdownMenuItem(value: 15, child: Text("15m before", style: TextStyle(fontSize: 14))),
-                          DropdownMenuItem(value: 30, child: Text("30m before", style: TextStyle(fontSize: 14))),
-                          DropdownMenuItem(value: 60, child: Text("1h before", style: TextStyle(fontSize: 14))),
-                          DropdownMenuItem(value: 1440, child: Text("1d before", style: TextStyle(fontSize: 14))),
-                        ],
+                      DropdownMenuItem(value: 0, child: Text("At time", style: TextStyle(fontSize: 14))),
+                      DropdownMenuItem(value: 10, child: Text("10m before", style: TextStyle(fontSize: 14))),
+                      DropdownMenuItem(value: 15, child: Text("15m before", style: TextStyle(fontSize: 14))),
+                      DropdownMenuItem(value: 30, child: Text("30m before", style: TextStyle(fontSize: 14))),
+                      DropdownMenuItem(value: 60, child: Text("1h before", style: TextStyle(fontSize: 14))),
+                      DropdownMenuItem(value: 1440, child: Text("1d before", style: TextStyle(fontSize: 14))),
+                    ],
                     onChanged: (v) => setState(() => reminderValue = v!),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 15),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: pickDateTimeAndAddTask,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: pickDateTimeAndAddTask,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
                 ),
-                elevation: 2,
-              ),
-              icon: const Icon(Icons.add_task_rounded),
-              label: const Text(
-                "Set Schedule & Add", 
-                style: TextStyle(fontWeight: FontWeight.bold),
+                icon: const Icon(Icons.add_task_rounded),
+                label: const Text("Set Schedule & Add", style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
-          ),
           ],
         ),
       ),
@@ -370,26 +433,68 @@ saveTasks(); // Always save after adding
       itemBuilder: (context, index) {
         final parts = todoList[index].split('\n');
         return Card(
+          // KEY FIX: Combines content and status to force redraw
+          key: ValueKey("${todoList[index]}_${taskCompleted[index]}"), 
           child: ListTile(
             leading: Checkbox(
               value: taskCompleted[index],
-              onChanged: (val) {
-                setState(() => taskCompleted[index] = val!);
-                saveTasks();
+              // Inside your ListView Checkbox onChanged:
+                onChanged: (val) async {
+                if (val == null) return;
+
+                // 1. Clean the ID to ensure it matches the background payload exactly
+                final parts = todoList[index].split('\n');
+                final String taskId = parts.last.trim(); 
+
+                setState(() {
+                  taskCompleted[index] = val;
+                });
+
+                // 2. Open SharedPreferences
+                final prefs = await SharedPreferences.getInstance();
+                
+                // 3. Save the Atomic Key (Primary source for background sync)
+                await prefs.setBool('status_$taskId', val); 
+
+                // 4. Update the list and WAIT for it to finish saving
+                // Make sure your saveTasks() function is awaited!
+                await saveTasks(); 
+                
+                debugPrint("✅ Manual Tick: Saved status_$taskId as $val");
               },
             ),
-            title: Text(parts[0], style: TextStyle(decoration: taskCompleted[index] ? TextDecoration.lineThrough : null)),
+            title: Text(
+              parts[0], 
+              style: TextStyle(
+                decoration: taskCompleted[index] ? TextDecoration.lineThrough : null
+              )
+            ),
             subtitle: Text("${parts[1]} at ${parts[2]}"),
             trailing: IconButton(
               icon: const Icon(Icons.delete, color: Colors.redAccent),
               onPressed: () {
+              final parts = todoList[index].split('\n');
+              final String taskId = parts.last.trim();
+
+              debugPrint("🗑️ Deleting Task → ID: $taskId | Title: ${parts[0]}");
+
+              if (parts.length >= 5) {
+                int? notiId = int.tryParse(parts[4]);
+                if (notiId != null) {
+                  NotiService().cancelNotification(notiId);
+                  debugPrint("🔕 Notification cancelled for ID: $notiId");
+                }
+              } else {
                 NotiService().cancelNotification(index);
-                setState(() {
-                  todoList.removeAt(index);
-                  taskCompleted.removeAt(index);
-                });
-                saveTasks();
-              },
+              }
+
+              setState(() {
+                todoList.removeAt(index);
+                taskCompleted.removeAt(index);
+              });
+
+              saveTasks();
+            },
             ),
           ),
         );

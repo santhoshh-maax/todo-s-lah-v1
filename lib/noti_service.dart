@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/material.dart'; // Ensure this is present
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -8,32 +8,34 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 @pragma('vm:entry-point')
-void notificationTapBackground(NotificationResponse details) async {
-  // This is the most important line for background execution!
+Future<void> notificationTapBackground(NotificationResponse details) async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final prefs = await SharedPreferences.getInstance();
+
   if (details.actionId == 'mark_done') {
-    final String? payload = details.payload;
-    if (payload == null) return;
+    final String? payloadId = details.payload;
+    if (payloadId == null) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    // Force the phone to refresh the file from the disk
-    await prefs.reload(); 
+    await prefs.setBool('status_$payloadId', true);
 
+    List<String> todoList = prefs.getStringList('todoList') ?? [];
     List<String> completedList = prefs.getStringList('taskCompleted') ?? [];
-    
-    int index = int.tryParse(payload) ?? -1;
 
-    if (index >= 0 && index < completedList.length) {
-      completedList[index] = 'true';
-      // Use await to ensure the write finishes before the OS kills this process
-      await prefs.setStringList('taskCompleted', completedList);
-      debugPrint("✅ Background mark_done worked for index $index");
+    for (int i = 0; i < todoList.length; i++) {
+      final parts = todoList[i].split('\n');
+      final String storedId = parts.last.trim();
+
+      if (storedId == payloadId) {
+        while (completedList.length <= i) completedList.add('false');
+        completedList[i] = 'true';
+        break;
+      }
     }
+
+    await prefs.setStringList('taskCompleted', completedList);
   }
 }
-
-// ... rest of your NotiService class follows ...
 class NotiService {
   static final NotiService _instance = NotiService._internal();
   factory NotiService() => _instance;
@@ -42,6 +44,11 @@ class NotiService {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   String _selectedTimeZone = 'UTC';
   Function(int)? onMarkTaskCompleted;
+
+  Future<NotificationAppLaunchDetails?> getLaunchDetails() async {
+  return _plugin.getNotificationAppLaunchDetails();
+}
+
 
   Future<void> initNotification() async {
     tz_data.initializeTimeZones();
@@ -52,23 +59,62 @@ class NotiService {
 
     await _plugin.initialize(
       initSettings,
-      onDidReceiveNotificationResponse: (details) {
-        if (details.actionId == 'mark_done') {
-          // Trigger the background logic manually for foreground clicks
-          notificationTapBackground(details);
-          if (onMarkTaskCompleted != null) {
-            onMarkTaskCompleted!(int.parse(details.payload ?? '0'));
+      onDidReceiveNotificationResponse: (details) async {
+      if (details.actionId == 'mark_done') {
+        final String? payloadId = details.payload;
+        if (payloadId == null) return;
+
+        final prefs = await SharedPreferences.getInstance();
+
+        // ✅ SAME LOGIC AS BACKGROUND
+        await prefs.setBool('status_$payloadId', true);
+        debugPrint("💾 Saved status_$payloadId = true");
+
+        await prefs.reload();
+
+        List<String> todoList = prefs.getStringList('todoList') ?? [];
+        List<String> completedList = prefs.getStringList('taskCompleted') ?? [];
+
+        for (int i = 0; i < todoList.length; i++) {
+          final parts = todoList[i].split('\n');
+final String storedId = parts.last.trim();
+  debugPrint("🔍 Comparing stored: $storedId vs payload: $payloadId");
+
+if (storedId == payloadId) {
+            while (completedList.length <= i) completedList.add('false');
+            completedList[i] = 'true';
+            break;
           }
         }
-      },
+
+        await prefs.setStringList('taskCompleted', completedList);
+
+        debugPrint("✅ Foreground: Task $payloadId marked complete");
+
+        // 🔁 Notify UI to refresh
+        if (onMarkTaskCompleted != null) {
+          onMarkTaskCompleted?.call(0);
+        }
+      }
+    },
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
   }
 
+  Future<void> requestBatteryOptimizations() async {
+    if (Platform.isAndroid) {
+      await Future.delayed(const Duration(seconds: 2));
+      var status = await Permission.ignoreBatteryOptimizations.status;
+      if (!status.isGranted) {
+        await Permission.ignoreBatteryOptimizations.request();
+      }
+    }
+  }
+
   Future<void> checkExactAlarmPermission() async {
     if (Platform.isAndroid) {
-      final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final androidImplementation = _plugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       if (androidImplementation != null) {
         await androidImplementation.requestExactAlarmsPermission();
       }
@@ -101,19 +147,19 @@ class NotiService {
   }) async {
     await checkExactAlarmPermission();
 
-    AndroidNotificationDetails androidPlatformChannelSpecifics = 
-    AndroidNotificationDetails(
-      'alarm_channel_$soundName', 
+    AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'alarm_channel_${soundName}_v3', // Incremented version to force update
       'Task Alarms',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound(soundName), 
+      sound: RawResourceAndroidNotificationSound(soundName),
       actions: [
         const AndroidNotificationAction(
           'mark_done',
           'Mark as Completed',
-          showsUserInterface: true, // Set to true to ensure click registers on Oppo
+          showsUserInterface: true, 
           cancelNotification: true,
         ),
       ],
@@ -125,14 +171,13 @@ class NotiService {
     final now = tz.TZDateTime.now(location);
 
     String? feedbackMessage;
-
     if (notificationTime.isBefore(now)) {
       if (taskTime.isAfter(now)) {
         notificationTime = taskTime;
-        feedbackMessage = "Reminder window passed. Alert set for exact time.";
+        feedbackMessage = "Set for exact time.";
       } else {
         notificationTime = now.add(const Duration(seconds: 5));
-        feedbackMessage = "Time passed. Notifying you now.";
+        feedbackMessage = "Notifying you now.";
       }
     }
 
@@ -157,14 +202,5 @@ class NotiService {
 
   Future<void> cancelNotification(int id) async {
     await _plugin.cancel(id);
-  }
-}
-/// Request Battery Optimization Exemption
-Future<void> requestBatteryOptimizations() async {
-  if (Platform.isAndroid) {
-    var status = await Permission.ignoreBatteryOptimizations.status;
-    if (status.isDenied) {
-      await Permission.ignoreBatteryOptimizations.request();
-    }
   }
 }
