@@ -40,8 +40,8 @@ android {
         signingConfig = signingConfigs.getByName("debug")
         
         // Use "=" for assignments in Kotlin
-        isMinifyEnabled = false
-        isShrinkResources = false
+        isMinifyEnabled = true
+        isShrinkResources = true
         
         // Use double quotes and parentheses for proguardFiles
         proguardFiles(
