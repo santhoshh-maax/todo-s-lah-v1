@@ -132,39 +132,47 @@ if (storedId == payloadId) {
   }
 
   Future<String?> scheduleNotification({
-    required int id,
-    required String payload,
-    required String title,
-    required String body,
-    required int year,
-    required int month,
-    required int day,
-    required int hour,
-    required int minute,
-    String repeat = 'None',
-    int reminderMinutes = 0,
-    String soundName = 'alarm1',
-  }) async {
-    await checkExactAlarmPermission();
+  required int id,
+  required String payload,
+  required String title,
+  required String body,
+  required int year,
+  required int month,
+  required int day,
+  required int hour,
+  required int minute,
+  String repeat = 'None',
+  int reminderMinutes = 0,
+  String soundName = 'alarm1', // keep but ignore
+}) async {
+  await checkExactAlarmPermission();
 
-    AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'alarm_channel_${soundName}_v3', // Incremented version to force update
-      'Task Alarms',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-      sound: RawResourceAndroidNotificationSound(soundName),
-      actions: [
-        const AndroidNotificationAction(
-          'mark_done',
-          'Mark as Completed',
-          showsUserInterface: true, 
-          cancelNotification: true,
-        ),
-      ],
-    );
+  // 🔥 ALWAYS LOAD SAVED VALUE
+  final prefs = await SharedPreferences.getInstance();
+  final savedAlarm = prefs.getString('selectedAlarm') ?? 'alarm1';
 
+  debugPrint("🔔 Using alarm sound: $savedAlarm");
+
+  AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+    'alarm_channel_${savedAlarm}_v4', // 👈 important (new channel)
+    'Task Alarms',
+    importance: Importance.max,
+    priority: Priority.high,
+    playSound: true,
+
+    // ✅ USE SAVED VALUE
+    sound: RawResourceAndroidNotificationSound(savedAlarm),
+
+    actions: [
+      const AndroidNotificationAction(
+        'mark_done',
+        'Mark as Completed',
+        showsUserInterface: true,
+        cancelNotification: true,
+      ),
+    ],
+  );
     final location = tz.getLocation(_selectedTimeZone);
     var taskTime = tz.TZDateTime(location, year, month, day, hour, minute);
     var notificationTime = taskTime.subtract(Duration(minutes: reminderMinutes));

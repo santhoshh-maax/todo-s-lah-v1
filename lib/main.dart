@@ -472,20 +472,23 @@ Future<void> _handleNotificationLaunch() async {
             subtitle: Text("${parts[1]} at ${parts[2]}"),
             trailing: IconButton(
               icon: const Icon(Icons.delete, color: Colors.redAccent),
-              onPressed: () {
-              final parts = todoList[index].split('\n');
+             onPressed: () {
+              final deletedTask = todoList[index];
+              final deletedStatus = taskCompleted[index];
+
+              // 🆔 Extract ID (optional but good)
+              final parts = deletedTask.split('\n');
               final String taskId = parts.last.trim();
 
-              debugPrint("🗑️ Deleting Task → ID: $taskId | Title: ${parts[0]}");
+              debugPrint("🗑️ Deleting Task → ID: $taskId");
 
+              // 🔕 Cancel notification
               if (parts.length >= 5) {
                 int? notiId = int.tryParse(parts[4]);
                 if (notiId != null) {
                   NotiService().cancelNotification(notiId);
                   debugPrint("🔕 Notification cancelled for ID: $notiId");
                 }
-              } else {
-                NotiService().cancelNotification(index);
               }
 
               setState(() {
@@ -494,8 +497,30 @@ Future<void> _handleNotificationLaunch() async {
               });
 
               saveTasks();
+
+              // 🔥 SHOW SNACKBAR WITH UNDO
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text("Task deleted"),
+                  duration: const Duration(seconds: 3),
+
+                  action: SnackBarAction(
+                    label: "UNDO",
+                    onPressed: () {
+                      setState(() {
+                        todoList.insert(index, deletedTask);
+                        taskCompleted.insert(index, deletedStatus);
+                      });
+
+                      saveTasks();
+
+                      debugPrint("↩️ Undo delete → Restored task $taskId");
+                    },
+                  ),
+                ),
+              );
             },
-            ),
+                        ),
           ),
         );
       },
