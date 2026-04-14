@@ -39,29 +39,48 @@ class _SettingsPageState extends State<SettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _selectedTheme = prefs.getString('themeMode') ?? 'System';
-      selectedAlarm = prefs.getString('user_alarm') ?? 'alarm1';
+      selectedAlarm = prefs.getString('selectedAlarm') ?? 'alarm1';
     });
   }
 
   void _changeAlarm(String newValue) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_alarm', newValue);
+  final prefs = await SharedPreferences.getInstance();
 
-    setState(() {
-      selectedAlarm = newValue;
-    });
+  // 💾 SAVE
+  await prefs.setString('selectedAlarm', newValue);
+  debugPrint("💾 Saved selectedAlarm = $newValue");
 
-    // PREVIEW THE SOUND:
-    try {
-      await _audioPlayer.stop();
-      // Ensure files are lowercase in android/app/src/main/res/raw/
-      await _audioPlayer.play(AssetSource('raw/$newValue.mp3'));
-    } catch (e) {
-      debugPrint("Preview error: $e");
-    }
+  setState(() {
+    selectedAlarm = newValue;
+  });
 
-    widget.onAlarmChanged(newValue);
+  debugPrint("🎵 UI Updated → selectedAlarm = $selectedAlarm");
+
+  // 🔊 PREVIEW SOUND
+  try {
+    await _audioPlayer.stop();
+    await _audioPlayer.play(AssetSource('raw/$newValue.mp3'));
+    debugPrint("🔊 Playing preview: $newValue.mp3");
+  } catch (e) {
+    debugPrint("❌ Preview error: $e");
   }
+
+  // 🔁 UPDATE MAIN APP
+  widget.onAlarmChanged(newValue);
+  debugPrint("🔄 Notified MainApp → $newValue");
+
+  // 🔔 SNACKBAR
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          "🔔 Tone changed to ${newValue.replaceAll('alarm', 'Tone ')}",
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
 
   Future<void> _updateTheme(String theme) async {
     final prefs = await SharedPreferences.getInstance();
