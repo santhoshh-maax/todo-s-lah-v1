@@ -442,24 +442,38 @@ Future<void> _handleNotificationLaunch() async {
                 onChanged: (val) async {
                 if (val == null) return;
 
-                // 1. Clean the ID to ensure it matches the background payload exactly
                 final parts = todoList[index].split('\n');
-                final String taskId = parts.last.trim(); 
+                final String taskId = parts.last.trim();
 
                 setState(() {
                   taskCompleted[index] = val;
                 });
 
-                // 2. Open SharedPreferences
                 final prefs = await SharedPreferences.getInstance();
-                
-                // 3. Save the Atomic Key (Primary source for background sync)
-                await prefs.setBool('status_$taskId', val); 
+                await prefs.setBool('status_$taskId', val);
 
-                // 4. Update the list and WAIT for it to finish saving
-                // Make sure your saveTasks() function is awaited!
-                await saveTasks(); 
-                
+                // 🔥 CANCEL NOTIFICATION
+                if (val == true) {
+                  int? notiId = int.tryParse(taskId);
+                  if (notiId != null) {
+                    await NotiService().cancelNotification(notiId);
+
+                    debugPrint("🔕 Notification cancelled (manual complete) → ID: $notiId");
+
+                    // ✅ SNACKBAR HERE
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("🔕 Notification cancelled"),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  }
+                }
+
+                await saveTasks();
+
                 debugPrint("✅ Manual Tick: Saved status_$taskId as $val");
               },
             ),

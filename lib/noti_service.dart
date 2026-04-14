@@ -18,6 +18,13 @@ Future<void> notificationTapBackground(NotificationResponse details) async {
     if (payloadId == null) return;
 
     await prefs.setBool('status_$payloadId', true);
+    final int? notiId = int.tryParse(payloadId);
+if (notiId != null) {
+  final plugin = FlutterLocalNotificationsPlugin();
+  await plugin.cancel(notiId);
+
+  debugPrint("🔕 Background: Notification cancelled → ID: $notiId");
+}
 
     List<String> todoList = prefs.getStringList('todoList') ?? [];
     List<String> completedList = prefs.getStringList('taskCompleted') ?? [];
@@ -93,7 +100,7 @@ if (storedId == payloadId) {
 
         // 🔁 Notify UI to refresh
         if (onMarkTaskCompleted != null) {
-          onMarkTaskCompleted?.call(0);
+          onMarkTaskCompleted?.call(int.parse(payloadId));
         }
       }
     },
@@ -147,8 +154,16 @@ if (storedId == payloadId) {
 }) async {
   await checkExactAlarmPermission();
 
+  
+
   // 🔥 ALWAYS LOAD SAVED VALUE
   final prefs = await SharedPreferences.getInstance();
+  final isDone = prefs.getBool('status_$id') ?? false;
+
+if (isDone) {
+  debugPrint("🚫 Already completed → skip scheduling → ID: $id");
+  return null;
+}
   final savedAlarm = prefs.getString('selectedAlarm') ?? 'alarm1';
 
   debugPrint("🔔 Using alarm sound: $savedAlarm");
