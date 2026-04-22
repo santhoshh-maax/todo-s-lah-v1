@@ -5,6 +5,9 @@
     <link rel="icon" type="image/png" href="assets/images/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="Eqgc_n-0zBDUPByewlw3X3yepwxmCa8fmv5fhpVM6BQ" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <title>Todo's Lah | Download</title>
     <style>
     :root {
@@ -216,6 +219,26 @@
         padding: 20px;
     }
 }
+.screenshots-section {
+    margin: 30px 0;
+}
+
+.swiper {
+    width: 100%;
+    padding-bottom: 30px; /* Space for dots */
+}
+
+.swiper-slide img {
+    width: 100%;
+    max-width: 250px; /* Perfect width for phone screenshots */
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    border: 2px solid #f0f0f0;
+}
+
+.swiper-pagination-bullet-active {
+    background: var(--primary-blue) !important;
+}
 </style>
 </head>
 <body>
@@ -236,6 +259,21 @@
         <a href="mailto:santhoshpanneer03@gmail.com">Gmail</a>
         <a href="https://github.com/santhoshh-maax" target="_blank">GitHub</a>
     </div>
+
+    <div class="screenshots-section">
+    <h3>App Preview</h3>
+    <div class="swiper mySwiper">
+        <div class="swiper-wrapper">
+            <div class="swiper-slide"><img src="assets/screenshots/s1.jpeg" alt="Screen 1"></div>
+            <div class="swiper-slide"><img src="assets/screenshots/s2.jpeg" alt="Screen 2"></div>
+            <div class="swiper-slide"><img src="assets/screenshots/s3.jpeg" alt="Screen 3"></div>
+            <div class="swiper-slide"><img src="assets/screenshots/s4.jpeg" alt="Screen 4"></div>
+            <div class="swiper-slide"><img src="assets/screenshots/s5.jpeg" alt="Screen 5"></div>
+            <div class="swiper-slide"><img src="assets/screenshots/s6.jpeg" alt="Screen 6"></div>
+        </div>
+        <div class="swiper-pagination"></div>
+    </div>
+</div>
 
     <div class="app-description">
     <h3>Key Features</h3>
@@ -276,6 +314,18 @@
         &copy; 2026 SP apps • Developed by: Santhosh Panneer Selvam
     </footer>
 </div>
-
+<script>
+  var swiper = new Swiper(".mySwiper", {
+    pagination: {
+      el: ".swiper-pagination",
+      dynamicBullets: true,
+    },
+    loop: true,
+    autoplay: {
+      delay: 2500,
+      disableOnInteraction: false,
+    },
+  });
+</script>
 </body>
 </html>
