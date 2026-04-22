@@ -2,157 +2,221 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="assets/images/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="Eqgc_n-0zBDUPByewlw3X3yepwxmCa8fmv5fhpVM6BQ" />
     <title>Todo's Lah | Download</title>
     <style>
-        :root {
-            --primary-blue: #007aff;
-            --text-dark: #1d1d1f;
-            --text-gray: #86868b;
-            --bg-light: #ffffff;
-            --card-bg: #ffffff;
-        }
+    :root {
+        --primary-blue: #007aff;
+        --text-dark: #1d1d1f;
+        --text-gray: #86868b;
+        --bg-light: #ffffff;
+        --card-bg: #ffffff;
+    }
 
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-light);
-            color: var(--text-dark);
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
+    body {
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        background-color: var(--bg-light);
+        color: var(--text-dark);
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px; /* Reduced padding for mobile */
+    }
 
-        .container {
-            background: var(--card-bg);
-            padding: 40px;
-            border-radius: 30px;
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-            border: 1px solid #f0f0f0;
-        }
+    .container {
+        background: var(--card-bg);
+        padding: 40px;
+        border-radius: 30px;
+        max-width: 500px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+        border: 1px solid #f0f0f0;
+        box-sizing: border-box; /* Ensures padding doesn't break width */
+    }
 
-        .logo {
-            width: 90px;
-            height: 90px;
-            border-radius: 20px;
-            margin-bottom: 20px;
-        }
+    .logo {
+        width: 90px;
+        height: 90px;
+        border-radius: 20px;
+        margin-bottom: 20px;
+    }
 
-        h1 {
-            font-size: 2.5rem;
-            margin: 10px 0;
-            font-weight: 700;
-            color: var(--text-dark);
-        }
+    h1 {
+        font-size: 2.2rem; /* Slightly smaller for better fit */
+        margin: 10px 0;
+        font-weight: 700;
+        color: var(--text-dark);
+    }
 
-        .developer-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--primary-blue);
-            margin-bottom: 5px;
-        }
+    .developer-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--primary-blue);
+        margin-bottom: 5px;
+    }
 
-        .tagline {
-            color: var(--text-gray);
-            font-size: 1rem;
-            margin-bottom: 30px;
-        }
+    .tagline {
+        color: var(--text-gray);
+        font-size: 1rem;
+        margin-bottom: 30px;
+    }
 
-        .btn-download {
-            background: var(--primary-blue);
-            color: white;
-            padding: 16px 40px;
-            text-decoration: none;
-            border-radius: 14px;
-            font-weight: 600;
-            display: block;
-            margin: 0 auto 20px;
-            transition: transform 0.2s, background 0.2s;
-        }
+    .btn-download {
+        background: var(--primary-blue);
+        color: white;
+        padding: 16px 40px;
+        text-decoration: none;
+        border-radius: 14px;
+        font-weight: 600;
+        display: block;
+        margin: 0 auto 20px;
+        transition: transform 0.2s, background 0.2s;
+    }
 
-        .btn-download:hover {
-            background: #005ecb;
-            transform: scale(1.02);
-        }
+    .btn-download:hover {
+        background: #005ecb;
+        transform: scale(1.02);
+    }
 
-        /* Social Links */
- .social-links {
+    .social-links {
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 12px;
-        margin: 30px 0;
+        gap: 10px;
+        margin: 25px 0;
     }
 
     .social-links a {
         text-decoration: none;
         color: #444;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         font-weight: 600;
-        padding: 8px 16px;
+        padding: 8px 14px;
         border: 1.5px solid #eee;
         border-radius: 10px;
         transition: all 0.2s ease-in-out;
-        display: flex;
-        align-items: center;
         background: #fff;
     }
 
-    /* Hover Styles */
     .social-links a:hover {
         color: #007aff;
         border-color: #007aff;
-        background-color: rgba(0, 122, 255, 0.05);
-        transform: translateY(-3px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        transform: translateY(-2px);
     }
 
-    /* Optional: Add a little dot before the text to act as a placeholder for icons */
-    .social-links a::before {
-        content: "•";
-        margin-right: 8px;
-        color: #ccc;
-        transition: color 0.2s;
+    .warning-box {
+        background: #fbfbfd;
+        padding: 15px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        color: var(--text-gray);
+        margin-bottom: 25px;
+        border: 1px solid #efefef;
+        line-height: 1.4;
     }
 
-    .social-links a:hover::before {
-        color: #007aff;
+    .proof-img {
+        width: 100%;       /* Makes it responsive */
+        max-width: 400px;  /* Desktop limit */
+        height: auto;      /* Keeps aspect ratio */
+        max-height: 800px; /* Limits height on big screens */
+        object-fit: contain;
+        border-radius: 15px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     }
 
-        .warning-box {
-            background: #fbfbfd;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            color: var(--text-gray);
-            margin-bottom: 30px;
-            border: 1px solid #efefef;
+    footer {
+        margin-top: 30px;
+        font-size: 0.8rem;
+        color: var(--text-gray);
+        border-top: 1px solid #eee;
+        padding-top: 20px;
+    }
+
+    /* --- IPHONE & MOBILE OPTIMIZATION --- */
+    @media (max-width: 480px) {
+        .container {
+            padding: 25px 20px; /* Less padding on small screens */
+            border-radius: 20px;
         }
-
-        /* Proof Image Styling */
+        
+        h1 {
+            font-size: 1.8rem; /* Shrink text for iPhone */
+        }
+        
         .proof-img {
-            width: 400px; /* Fixed width as requested */
-            height: 800px; /* Fixed height as requested */
-            object-fit: contain; /* Prevents stretching */
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            background: #fff;
+            max-height: 500px; /* Don't make it too long on mobile */
         }
 
-        footer {
-            margin-top: 30px;
-            font-size: 0.85rem;
-            color: var(--text-gray);
-            border-top: 1px solid #eee;
-            padding-top: 20px;
+        .social-links {
+            gap: 8px;
         }
-    </style>
+        
+        .social-links a {
+            padding: 6px 12px;
+            font-size: 0.75rem;
+        }
+    }
+    .app-description {
+    text-align: left;
+    margin: 30px 0;
+    padding: 25px;
+    background: #fbfbfd;
+    border-radius: 20px;
+    border: 1px solid #efefef;
+}
+
+.app-description h3 {
+    margin-top: 0;
+    font-size: 1.3rem;
+    color: var(--text-dark);
+    font-weight: 700;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 2 columns on PC */
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.feature-item span {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.feature-item h4 {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: var(--primary-blue);
+    font-weight: 600;
+}
+
+.feature-item p {
+    font-size: 0.8rem;
+    color: var(--text-gray);
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* iPhone/Mobile Fix */
+@media (max-width: 480px) {
+    .feature-grid {
+        grid-template-columns: 1fr; /* 1 column on iPhone */
+        gap: 15px;
+    }
+    
+    .app-description {
+        padding: 20px;
+    }
+}
+</style>
 </head>
 <body>
 
@@ -172,6 +236,34 @@
         <a href="mailto:santhoshpanneer03@gmail.com">Gmail</a>
         <a href="https://github.com/santhoshh-maax" target="_blank">GitHub</a>
     </div>
+
+    <div class="app-description">
+    <h3>Key Features</h3>
+    <p>Todo's Lah is built with Flutter to provide a seamless, high-performance task management experience.</p>
+    
+    <div class="feature-grid">
+        <div class="feature-item">
+            <span>🎨</span>
+            <h4>Dynamic Themes</h4>
+            <p>Full Dark and Light mode support to protect your eyes.</p>
+        </div>
+        <div class="feature-item">
+            <span>🔔</span>
+            <h4>Custom Alerts</h4>
+            <p>Smart notifications to keep your schedule on track.</p>
+        </div>
+        <div class="feature-item">
+            <span>📅</span>
+            <h4>Smart Planning</h4>
+            <p>Intuitive task entry designed for speed and clarity.</p>
+        </div>
+        <div class="feature-item">
+            <span>🔒</span>
+            <h4>Privacy First</h4>
+            <p>Offline-first architecture. Your data never leaves your device.</p>
+        </div>
+    </div>
+</div>
 
     <div class="warning-box">
         🔒 <b>Note:</b> Chrome may flag APK files. Please select "Download anyway" to proceed. The app is verified by Play Protect.
