@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo's Lah | Download</title>
+    <style>
+        :root {
+            --primary-blue: #007aff;
+            --text-dark: #1d1d1f;
+            --text-gray: #86868b;
+            --bg-light: #ffffff;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 30px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            border: 1px solid #f0f0f0;
+        }
+
+        .logo {
+            width: 90px;
+            height: 90px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin: 10px 0;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .developer-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+            margin-bottom: 5px;
+        }
+
+        .tagline {
+            color: var(--text-gray);
+            font-size: 1rem;
+            margin-bottom: 30px;
+        }
+
+        .btn-download {
+            background: var(--primary-blue);
+            color: white;
+            padding: 16px 40px;
+            text-decoration: none;
+            border-radius: 14px;
+            font-weight: 600;
+            display: block;
+            margin: 0 auto 20px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .btn-download:hover {
+            background: #005ecb;
+            transform: scale(1.02);
+        }
+
+        /* Social Links */
+ .social-links {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        margin: 30px 0;
+    }
+
+    .social-links a {
+        text-decoration: none;
+        color: #444;
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 8px 16px;
+        border: 1.5px solid #eee;
+        border-radius: 10px;
+        transition: all 0.2s ease-in-out;
+        display: flex;
+        align-items: center;
+        background: #fff;
+    }
+
+    /* Hover Styles */
+    .social-links a:hover {
+        color: #007aff;
+        border-color: #007aff;
+        background-color: rgba(0, 122, 255, 0.05);
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Optional: Add a little dot before the text to act as a placeholder for icons */
+    .social-links a::before {
+        content: "•";
+        margin-right: 8px;
+        color: #ccc;
+        transition: color 0.2s;
+    }
+
+    .social-links a:hover::before {
+        color: #007aff;
+    }
+
+        .warning-box {
+            background: #fbfbfd;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: var(--text-gray);
+            margin-bottom: 30px;
+            border: 1px solid #efefef;
+        }
+
+        /* Proof Image Styling */
+        .proof-img {
+            width: 400px; /* Fixed width as requested */
+            height: 800px; /* Fixed height as requested */
+            object-fit: contain; /* Prevents stretching */
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            background: #fff;
+        }
+
+        footer {
+            margin-top: 30px;
+            font-size: 0.85rem;
+            color: var(--text-gray);
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <img src="assets/images/logo.png" alt="Todo's Lah Logo" class="logo">
+    <div class="developer-name">Santhosh Panneer Selvam's</div>
+    <h1>Todo's Lah</h1>
+    <p class="tagline">A clean, efficient task management utility by <b>SP apps</b>.</p>
+    
+    <a href="https://github.com/santhoshh-maax/todo-s-lah-v1/releases/download/v1.0.0/Todo.Lah.apk" class="btn-download">
+        Download v1.0.0 (APK)
+    </a>
+
+    <div class="social-links">
+        <a href="https://www.linkedin.com/in/santhosh-p-547721358/" target="_blank">LinkedIn</a>
+        <a href="https://www.instagram.com/santhosh_ps22/" target="_blank">Instagram</a>
+        <a href="mailto:santhoshpanneer03@gmail.com">Gmail</a>
+        <a href="https://github.com/santhoshh-maax" target="_blank">GitHub</a>
+    </div>
+
+    <div class="warning-box">
+        🔒 <b>Note:</b> Chrome may flag APK files. Please select "Download anyway" to proceed. The app is verified by Play Protect.
+    </div>
+
+    <img src="assets/proof.jpeg" alt="Verified Safe" class="proof-img">
+    <p style="font-size: 0.8rem; color: #86868b; margin-top: 10px;">✓ Google Play Protect Verification</p>
+
+    <footer>
+        &copy; 2026 SP apps • Developed by: Santhosh Panneer Selvam
+    </footer>
+</div>
+
+</body>
+</html>
