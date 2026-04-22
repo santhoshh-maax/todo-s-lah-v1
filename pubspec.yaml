@@ -32,7 +32,7 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/raw/
-    - assets/proof.jpeg
+    - assets/proof1.jpeg
 flutter_launcher_icons:
   android: true
   ios: false
