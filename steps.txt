@@ -1,0 +1,26 @@
+step one change the local.properties in app copy and paste this
+
+
+sdk.dir=C:\\Users\\santh\\AppData\\Local\\Android\\sdk
+flutter.sdk=C:\\src\\flutter
+flutter.buildMode=debug
+flutter.versionName=1.0.0
+flutter.versionCode=1
+ndk.dir=C:\\Users\\santh\\AppData\\Local\\Android\\Sdk\\ndk\\29.0.13599879
+
+
+run this after this step
+flutter clean
+flutter pub get
+
+step2 change the ndk version manulay in app>build.gradels
+
+ndkversion = "29.0.13599879"
+
+
+run this after this step
+flutter clean
+flutter pub get
+
+if no manulay download the version on this
+
