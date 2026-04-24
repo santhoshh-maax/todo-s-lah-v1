@@ -250,9 +250,43 @@
     <h1>Todo's Lah</h1>
     <p class="tagline">A clean, efficient task management utility by <b>SP apps</b>.</p>
     
-    <a href="https://github.com/santhoshh-maax/todo-s-lah-v1/releases/download/v1.0.0/Todo.Lah.apk" class="btn-download">
-        Download v1.0.0 (APK)
-    </a>
+ <a href="https://github.com/santhoshh-maax/todo-s-lah-v1/releases/download/v1.0.0/Todo.Lah.apk" class="btn-download" id="download-btn">
+    Download v1.0.0 (APK)
+</a>
+<div class="stats-bar" style="display: flex; gap: 20px; justify-content: center; margin-top: 20px; font-family: sans-serif;">
+    <span>📥 <span id="download-count">0</span> Downloads</span>
+    <span>⭐ <span id="avg-rating">0</span>/5</span>
+</div>
+
+<div style="margin-top: 15px; display: flex; justify-content: center; gap: 10px;">
+    <button id="open-review" style="cursor: pointer; padding: 10px 20px; border-radius: 5px; border: 1px solid #007bff; background: white; color: #007bff;">Write a Review</button>
+    <button id="view-reviews-btn" style="cursor: pointer; padding: 10px 20px; border-radius: 5px; border: none; background: #007bff; color: white;">View Reviews</button>
+</div>
+
+<div id="review-modal" style="display: none; border: 1px solid #ccc; padding: 20px; margin: 20px auto; border-radius: 10px; background: #fff; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+    <h3 style="margin-top:0;">Rate this app</h3>
+    <div id="star-rating-container" style="font-size: 30px; cursor: pointer; color: #ccc; margin-bottom: 15px;">
+        <span class="star" data-value="1">★</span>
+        <span class="star" data-value="2">★</span>
+        <span class="star" data-value="3">★</span>
+        <span class="star" data-value="4">★</span>
+        <span class="star" data-value="5">★</span>
+    </div>
+    <textarea id="user-comment" placeholder="Describe your experience..." style="width: 100%; height: 80px; padding: 10px; border-radius: 5px; border: 1px solid #ddd; box-sizing: border-box;"></textarea>
+    <div style="margin-top: 15px; display: flex; gap: 10px;">
+        <button onclick="submitReview()" style="flex:1; padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">Post</button>
+        <button onclick="closeReview()" style="flex:1; padding: 10px; background: #eee; border: none; border-radius: 5px; cursor: pointer;">Cancel</button>
+    </div>
+</div>
+
+<div id="review-container-wrapper" style="display: none; margin: 20px auto; max-width: 500px; border: 1px solid #eee; border-radius: 12px; background: #fff; overflow: hidden;">
+    <div style="background: #f8f9fa; padding: 10px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+        <h4 style="margin:0;">User Reviews</h4>
+        <button onclick="document.getElementById('review-container-wrapper').style.display='none'" style="border:none; background:none; cursor:pointer; font-size:18px;">&times;</button>
+    </div>
+    <div id="review-list" style="max-height: 300px; overflow-y: auto; padding: 15px;">
+        </div>
+</div>
 
     <div class="sponsor-section" style="text-align: center; margin-top: 50px; padding: 30px; border-top: 1px solid #e1e4e8; background-color: #f6f8fa; border-radius: 12px;">
     <h3 style="color: #24292e; font-family: sans-serif; margin-bottom: 10px;">Support the Developer</h3>
@@ -328,18 +362,135 @@
         &copy; 2026 SP apps • Developed by: Santhosh Panneer Selvam
     </footer>
 </div>
-<script>
-  var swiper = new Swiper(".mySwiper", {
-    pagination: {
-      el: ".swiper-pagination",
-      dynamicBullets: true,
-    },
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getDatabase, ref, onValue, push, update, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  // 1. Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCYtt593D7Z7rObwRZgP4VqHy6uW_Sx_2w",
+    authDomain: "todo-lah-web.firebaseapp.com",
+    projectId: "todo-lah-web",
+    storageBucket: "todo-lah-web.firebasestorage.app",
+    messagingSenderId: "950300683807",
+    appId: "1:950300683807:web:1f8b2c4ea62b34ee66ef2a",
+    measurementId: "G-0RZP9HRGWQ",
+    // UPDATE THIS LINE BELOW:
+    databaseURL: "https://todo-lah-web-default-rtdb.asia-southeast1.firebasedatabase.app"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  let selectedRating = 0;
+
+  // --- 2. Swiper Logic (RE-ADDED) ---
+  const swiper = new Swiper(".mySwiper", {
+    pagination: { el: ".swiper-pagination", dynamicBullets: true },
     loop: true,
-    autoplay: {
-      delay: 2500,
-      disableOnInteraction: false,
-    },
+    autoplay: { delay: 2500, disableOnInteraction: false },
   });
+
+  // --- 3. UI Elements ---
+  const modal = document.getElementById('review-modal');
+  const openBtn = document.getElementById('open-review');
+  const viewBtn = document.getElementById('view-reviews-btn');
+  const stars = document.querySelectorAll('.star');
+
+  // --- 4. Modal & Star Selection ---
+  if (openBtn) {
+    openBtn.onclick = () => {
+      modal.style.display = 'block';
+      modal.scrollIntoView({ behavior: 'smooth' });
+    };
+  }
+
+  stars.forEach(star => {
+    star.addEventListener('click', function() {
+      selectedRating = this.getAttribute('data-value');
+      stars.forEach(s => {
+        s.style.color = s.getAttribute('data-value') <= selectedRating ? "#FFD700" : "#ccc";
+      });
+    });
+  });
+
+  // --- 5. Firebase Realtime Sync (Downloads) ---
+  const downloadBtn = document.getElementById('download-btn');
+  const countRef = ref(db, 'stats/downloadCount');
+
+  onValue(countRef, (snapshot) => {
+    document.getElementById('download-count').innerText = snapshot.val() || 0;
+  });
+
+  if (downloadBtn) {
+    downloadBtn.onclick = () => {
+      update(ref(db, 'stats'), { downloadCount: increment(1) });
+    };
+  }
+
+  // --- 6. Firebase Realtime Sync (Reviews) ---
+  const reviewsRef = ref(db, 'reviews');
+
+  onValue(reviewsRef, (snapshot) => {
+    const list = document.getElementById('review-list');
+    const avgDisplay = document.getElementById('avg-rating');
+    const data = snapshot.val();
+    
+    // 1. CLEAR EVERYTHING FIRST
+    list.innerHTML = "";
+
+    // 2. IF NO DATA EXISTS (The "Missing" Logic)
+    if (!data) {
+      list.innerHTML = "<p style='text-align:center; color:#888; padding:20px;'>No reviews yet. Be the first!</p>";
+      avgDisplay.innerText = "0";
+      return;
+    }
+
+    // 3. IF DATA EXISTS, RENDER IT
+    const reviewsArray = Object.values(data);
+    let totalStars = 0;
+    list.innerHTML = "<h4>User Reviews</h4>";
+
+    [...reviewsArray].reverse().forEach(r => {
+      totalStars += r.star;
+      list.innerHTML += `
+        <div style="border-bottom: 1px solid #f1f1f1; padding: 12px 0;">
+          <div style="color: #FFD700;">${"★".repeat(r.star)}${"☆".repeat(5-r.star)}</div>
+          <p style="margin: 5px 0; font-size: 0.9rem; color: #444;">${r.comment}</p>
+        </div>`;
+    });
+    avgDisplay.innerText = (totalStars / reviewsArray.length).toFixed(1);
+  });
+
+  // --- 7. Global Functions for Buttons ---
+  window.closeReview = () => {
+    modal.style.display = 'none';
+    selectedRating = 0;
+    stars.forEach(s => s.style.color = "#ccc");
+  };
+
+  window.submitReview = () => {
+    const commentInput = document.getElementById('user-comment');
+    if (selectedRating == 0) return alert("Please select stars!");
+    if (!commentInput.value.trim()) return alert("Please write a comment!");
+
+    push(reviewsRef, {
+      star: parseInt(selectedRating),
+      comment: commentInput.value,
+      timestamp: Date.now()
+    }).then(() => {
+      commentInput.value = "";
+      window.closeReview();
+      document.getElementById('review-container-wrapper').style.display = 'block';
+    });
+  };
+
+  if (viewBtn) {
+    viewBtn.onclick = () => {
+      const wrapper = document.getElementById('review-container-wrapper');
+      wrapper.style.display = wrapper.style.display === 'none' ? 'block' : 'none';
+      if(wrapper.style.display === 'block') wrapper.scrollIntoView({ behavior: 'smooth' });
+    };
+  }
 </script>
 </body>
 </html>
