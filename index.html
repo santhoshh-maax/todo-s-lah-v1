@@ -1,3 +1,8 @@
+<!-- /* * Copyright (c) 2026 Santhosh Panneer Selvam
+ * Project: Todo's Lah
+ * All Rights Reserved. 
+ * Unauthorized copying of this file is strictly prohibited.
+ */ -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -134,13 +139,34 @@
         box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     }
 
-    footer {
-        margin-top: 30px;
-        font-size: 0.8rem;
-        color: var(--text-gray);
-        border-top: 1px solid #eee;
-        padding-top: 20px;
-    }
+   /* This ensures the footer doesn't interfere with your main content */
+.main-footer {
+    width: 100%;
+    padding: 30px 0;
+    margin-top: 40px; /* Space between your features and the footer */
+    text-align: center;
+    font-family: 'Inter', sans-serif; /* Or your page's main font */
+    color: #666;
+    font-size: 13px;
+    line-height: 1.6;
+    border-top: 1px solid #f0f0f0; /* Subtle line to separate it */
+    clear: both; /* Prevents floating elements from overlapping */
+}
+
+.main-footer a {
+    color: #3b82f6; /* Matching your blue buttons */
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.main-footer a:hover {
+    text-decoration: underline;
+}
+
+.license-text {
+    margin-top: 5px;
+    opacity: 0.8;
+}
 
     /* --- IPHONE & MOBILE OPTIMIZATION --- */
     @media (max-width: 480px) {
@@ -358,9 +384,14 @@
     <img src="assets/proof.jpeg" alt="Verified Safe" class="proof-img">
     <p style="font-size: 0.8rem; color: #86868b; margin-top: 10px;">✓ Google Play Protect Verification</p>
 
-    <footer>
+    <!-- <footer>
         &copy; 2026 SP apps • Developed by: Santhosh Panneer Selvam
-    </footer>
+    </footer> -->
+    <footer class="main-footer">
+    <p>&copy; 2026 SP apps • Developed by: Santhosh Panneer Selvam</p>
+    <p class="license-text">All Rights Reserved • <a href="LICENSE" target="_blank">View License</a></p>
+</footer>
+    
 </div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";

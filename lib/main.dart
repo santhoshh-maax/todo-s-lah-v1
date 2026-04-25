@@ -1,3 +1,8 @@
+/* * Copyright (c) 2026 Santhosh Panneer Selvam
+ * Project: Todo's Lah
+ * All Rights Reserved. 
+ * Unauthorized copying of this file is strictly prohibited.
+ */ 
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
